@@ -2,20 +2,20 @@ name: Dev Pipeline
 
 on:
   push:
-     branches:
-     - dev
+    branches:
+      - dev
   workflow_dispatch:
 
 concurrency:
-      group: dev-pipeline
-      cancel-in-progress: true
+  group: dev-pipeline
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
 
-   build-test:
+  build-test:
     name: Build & Test Dev Code
     runs-on: ubuntu-latest
 
@@ -29,68 +29,63 @@ jobs:
       - name: Run Dummy Test (HTML Project)
         run: echo "No backend test required. HTML app OK."
 
- notify-qa:
-   name: Notify QA for Testing
-   needs: build-test
-   runs-on: ubuntu-latest
+  notify-qa:
+    name: Notify QA for Testing
+    needs: build-test
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Send Email to QA
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🔍 QA Testing Required - Dev Build Ready"
+          body: |
+            Hello QA,
 
-steps:
-  - name: Send Email to QA
-    uses: dawidd6/action-send-mail@v3
-    with:
-      server_address: smtp.gmail.com
-      server_port: 587
-      username: ${{ secrets.EMAIL_USERNAME }}
-      password: ${{ secrets.EMAIL_PASSWORD }}
-      subject: "🔍 QA Testing Required - Dev Build Ready"
-      body: |
-        Hello QA,
+            A new DEV build is ready for testing.
 
-        A new DEV build is ready for testing.
+            ✔ Please verify the application
+            ✔ Approve in GitHub once testing is complete
 
-        ✔ Please verify the application
-        ✔ Approve in GitHub once testing is complete
+            Repository: ${{ github.repository }}
+          to: aws.studen@gmail.com
+          from: avantikagautam022@gmail.com
 
-        Repository: ${{ github.repository }}
-      to: aws.studen@gmail.com
-      from: avantikagautam022@gmail.com
+  qa-approval:
+    name: QA Approval Gate
+    needs: notify-qa
+    runs-on: ubuntu-latest
 
+    environment:
+      name: qa-approval
 
-qa-approval:
-name: QA Approval Gate
-needs: notify-qa
-runs-on: ubuntu-latest
+    steps:
+      - name: Waiting for QA Approval
+        run: echo "Waiting for QA approval..."
 
+  promote-to-staging:
+    name: Promote Dev → Staging
+    needs: qa-approval
+    runs-on: ubuntu-latest
 
-environment:
-  name: qa-approval
+    steps:
+      - name: Checkout full repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-steps:
-  - name: Waiting for QA Approval
-    run: echo "Waiting for QA approval..."
+      - name: Merge dev into staging
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
 
+          git fetch origin
 
-promote-to-staging:
-name: Promote Dev → Staging
-needs: qa-approval
-runs-on: ubuntu-latest
+          git checkout staging || git checkout -b staging
+          git merge origin/dev --no-edit
 
-
-steps:
-  - name: Checkout full repository
-    uses: actions/checkout@v4
-    with:
-      fetch-depth: 0
-
-  - name: Merge dev into staging
-    run: |
-      git config user.name "github-actions"
-      git config user.email "actions@github.com"
-
-      git fetch origin
-
-      git checkout staging || git checkout -b staging
-      git merge origin/dev --no-edit
-
-      git push origin staging
+          git push origin staging
