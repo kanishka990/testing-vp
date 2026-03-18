@@ -1,0 +1,63 @@
+name: Dev Pipeline
+
+on:
+push:
+branches: [dev]
+
+permissions:
+contents: write
+
+jobs:
+
+build-test:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+
+```
+  - name: Dummy Test (HTML project)
+    run: echo "No backend test, HTML app OK"
+```
+
+notify-qa:
+needs: build-test
+runs-on: ubuntu-latest
+steps:
+- name: Email QA
+uses: dawidd6/action-send-mail@v3
+with:
+server_address: smtp.gmail.com
+server_port: 587
+username: ${{ secrets.EMAIL_USERNAME }}
+password: ${{ secrets.EMAIL_PASSWORD }}
+subject: "QA Testing Required"
+body: "Please test DEV build"
+to: [aws.studen@gmail.com](mailto:aws.studen@gmail.com)
+from: [avantikagautam022@gmail.com](mailto:avantikagautam022@gmail.com)
+
+approval:
+needs: notify-qa
+runs-on: ubuntu-latest
+environment:
+name: qa-approval
+steps:
+- run: echo "Waiting for QA approval"
+
+promote:
+needs: approval
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+with:
+fetch-depth: 0
+
+```
+  - name: Merge dev → staging
+    run: |
+      git config user.name "github-actions"
+      git config user.email "actions@github.com"
+      git fetch origin
+      git checkout staging || git checkout -b staging
+      git merge origin/dev --no-edit
+      git push origin staging
+```
