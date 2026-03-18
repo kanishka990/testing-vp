@@ -1,0 +1,38 @@
+name: Staging Deployment Pipeline
+
+on:
+push:
+branches: [staging]
+
+jobs:
+
+deploy:
+runs-on: ubuntu-latest
+
+```
+steps:
+  - uses: actions/checkout@v4
+
+  # Simulated deployment (for testing)
+  - name: Deploy Application
+    run: |
+      echo "Deploying test.html to staging server..."
+      ls -la
+
+  # Email after deployment
+  - name: Notify Deployment Success
+    uses: dawidd6/action-send-mail@v3
+    with:
+      server_address: smtp.gmail.com
+      server_port: 587
+      username: ${{ secrets.EMAIL_USERNAME }}
+      password: ${{ secrets.EMAIL_PASSWORD }}
+      subject: "🚀 Staging Deployment Success"
+      body: |
+        Application deployed successfully to STAGING.
+
+        ✔ test.html is live
+        ✔ Pipeline executed successfully
+      to: avantikagautam022@gmail.com
+      from: avantikagautam022@gmail.com
+```
